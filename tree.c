@@ -2,14 +2,15 @@
 #include <stdio.h>
 #include <omp.h>
 #include <stdlib.h>
-
+#include <unistd.h>
 
 #define NDIM 2
+#define NPOINT 12
 typedef struct knode knode;
 typedef struct kpoint kpoint;
-
+#define TYPE double
 struct kpoint {
-  int coord[NDIM];
+  TYPE coord[NDIM];
 };
 
 struct knode {
@@ -22,12 +23,21 @@ struct knode {
 
 void view_point(kpoint* dati,int n){
   for(int i=0;i<n;i++){
-    printf("(%d,%d), ",dati[i].coord[0],dati[i].coord[1]);
+    printf("(%f,%f), ",dati[i].coord[0],dati[i].coord[1]);
   }
   printf("\n");
 }
 
-// function to swap elements
+
+
+void init_point(kpoint* dati,int n){
+  for(int i=0;i<n;++i){
+    dati[i].coord[0]=drand48();
+    dati[i].coord[1]=drand48();      
+  }
+}
+
+
 void swap(kpoint* a, kpoint* b) {
   kpoint t = *a;
   a->coord[0]=b->coord[0];
@@ -37,11 +47,10 @@ void swap(kpoint* a, kpoint* b) {
   b->coord[1]=t.coord[1];
 }
 
-// function to find the partition position
 int partition(kpoint* array, int low, int high,int axis) {
   
   // select the rightmost element as pivot
-  int pivot = array[high].coord[axis];
+  TYPE pivot = array[high].coord[axis];
   
   // pointer for greater element
   int i = (low - 1);
@@ -76,91 +85,15 @@ void quickSort(kpoint* array, int low, int high,int axis) {
     int pi = partition(array, low, high, axis);
     //printf("Hi, i'm %d/%d in sorting\n",omp_get_thread_num(),omp_get_num_threads());    
     // recursive call on the left of pivot
-#pragma omp task shared(array) firstprivate(low,pi,axis)
+
     quickSort(array, low, pi - 1, axis);
     
     // recursive call on the right of pivot
-#pragma omp task shared(array) firstprivate(high,pi,axis)
+
     quickSort(array, pi + 1, high, axis);
   }
 }
 
-
-knode* buildtree(kpoint* dati,int ndim,int axis,int size,int dept){
-  int myaxis = (axis+1) % ndim;
-  knode* this_node= (knode*) malloc(sizeof(knode));
-  this_node->axis=myaxis;
-  kpoint* my_split=(kpoint*) malloc(sizeof(kpoint));
-  if (size == 1) {
-    this_node->left = NULL;
-    this_node->right = NULL;
-    my_split->coord[0]=dati->coord[0];
-    my_split->coord[1]=dati->coord[1];
-    this_node->split=*my_split;
-    //printf("\nsize==1, ");
-    //printf("Buildtree before split:\n");
-    //view_point(dati, size);
-
-    return this_node;
-  }
-  if (size ==2) {
-    
-    my_split->coord[0]=dati->coord[0];
-    my_split->coord[1]=dati->coord[1];
-    this_node->split=*my_split;
-    this_node->left = NULL;
-    this_node->right = buildtree(dati+1, 2, myaxis, 1,dept+1);
-    //printf("\nsize==2, ");
-    //printf("Buildtree before split:\n");
-    //view_point(dati, size);
-    
-    return this_node;
-    
-  }
-  if(dept==1){
-    omp_set_num_threads(8);
-
-  }
-  if(dept==2)
-    omp_set_num_threads(4);
-  if(dept>2)
-    omp_set_num_threads(1);
-#pragma omp parallel
-  {
-    #pragma omp single
-    {    
-      //printf("8 th,%d\n",omp_get_num_threads());
-      quickSort(dati,0,size-1,myaxis); // order all eleme
-    }
-}
-  //printf("\nBuildtree before split:\n");
-  //view_point(dati, size);
-  int median= size/2; //(size % 2 == 0 ) ? size / 2 -1: size / 2 ;
-  //printf("Splitpoint: (%d,%d),median %d\n",dati[median].coord[0],dati[median].coord[1],median);
-
-
-  my_split->coord[0]=dati[median].coord[0];
-  my_split->coord[1]=dati[median].coord[1];
-
-  this_node->split=*my_split;
-
-  
-  //printf("I'm %d/%d",omp_get_thread_num(),omp_get_num_threads());
-  // 11 elementi, mediano 6, size/2 = 5
-#pragma omp task shared(dati) firstprivate(myaxis, median,size,dept)
-  this_node->left = buildtree(dati, 2, myaxis, median ,dept+1);
-#pragma omp task shared(dati) firstprivate(myaxis, median,size,dept)
-  this_node->right = buildtree(dati+median+1, 2, myaxis,size-median-1 ,dept+1);
-  return this_node;
-}
-
-
-void init_point(kpoint* dati,int n){
-  for(int i=0;i<n;++i){
-    dati[i].coord[0]=rand() % 100;
-    dati[i].coord[1]=rand() % 100;      
-  }
-}
 
 void view_tree(knode* dati){
   if ( (dati->right==NULL) && (dati->left==NULL) ){
@@ -171,7 +104,7 @@ void view_tree(knode* dati){
     kpoint point=dati->split;
     knode *left= dati->left;
     kpoint l_point = left->split;
-    printf(" \"%d,%d\" -- \"%d,%d\" [label=%d] \n",point.coord[0],point.coord[1],l_point.coord[0],l_point.coord[1],dati->axis);
+    printf(" \"%f,%f\" -- \"%f,%f\" [label=%d] \n",point.coord[0],point.coord[1],l_point.coord[0],l_point.coord[1],dati->axis);
 
     view_tree(left);
     return;
@@ -181,7 +114,7 @@ void view_tree(knode* dati){
     kpoint point=dati->split;
     knode *right= dati->right;
     kpoint r_point = right->split;
-    printf(" \"%d,%d\" -- \"%d,%d\" [label=%d]\n",point.coord[0],point.coord[1],r_point.coord[0],r_point.coord[1],dati->axis);
+    printf(" \"%f,%f\" -- \"%f,%f\" [label=%d]\n",point.coord[0],point.coord[1],r_point.coord[0],r_point.coord[1],dati->axis);
 
     view_tree(right);
     return;
@@ -194,8 +127,8 @@ void view_tree(knode* dati){
   kpoint r_point = right->split;
   kpoint l_point = left->split;
 
-  printf(" \"%d,%d\" -- \"%d,%d\" [label=%c] \n",point.coord[0],point.coord[1],r_point.coord[0],r_point.coord[1],dati->axis+88);
-  printf(" \"%d,%d\" -- \"%d,%d\" [label=%c] \n",point.coord[0],point.coord[1],l_point.coord[0],l_point.coord[1],dati->axis+88);
+  printf(" \"%f,%f\" -- \"%f,%f\" [label=%c] \n",point.coord[0],point.coord[1],r_point.coord[0],r_point.coord[1],dati->axis+88);
+  printf(" \"%f,%f\" -- \"%f,%f\" [label=%c] \n",point.coord[0],point.coord[1],l_point.coord[0],l_point.coord[1],dati->axis+88);
   
   view_tree(left);
   view_tree(right);
@@ -206,30 +139,179 @@ void view_tree(knode* dati){
 
 void view_node(knode* dati) {
   kpoint point=dati->split;
-  printf("(%d,%d), axis %d\n",point.coord[0],point.coord[1],1);
+  printf("(%f,%f), axis %d\n",point.coord[0],point.coord[1],1);
 }
+
+int three_way_partition(kpoint* dati,TYPE midvalue, int npoint,int axis){
+  int i=0;
+  int j=0;
+  int k=npoint -1;
+  while(j<=k){
+    if(dati[j].coord[axis] < midvalue) {
+      swap(dati+i,dati+j);
+      ++i;
+      ++j;
+    } else if(dati[j].coord[axis] > midvalue){
+      swap(dati+j,dati+k);
+      --k;
+    } else {
+      ++j;
+    }
+
+  }
+  return j;
+}
+
+TYPE find_mean(kpoint* dati,int npoint,int axis) {
+  TYPE min=dati[0].coord[axis];
+  TYPE max=dati[0].coord[axis];
+  for(int i=0;i<npoint;++i){
+    if(dati[i].coord[axis]> max){
+      max=dati[i].coord[axis];
+      continue;
+    }
+    if(dati[i].coord[axis]< min){
+      min=dati[i].coord[axis];
+    }
+  }
+  
+
+  return (min+max)/2;
+}
+
+int find_pivot(kpoint* dati,TYPE mean,int npoint,int axis){
+  for(int i=0;i<npoint;++i){
+    if(dati[i].coord[axis] > mean)
+      return (i);
+  }
+  return -1;
+}
+
+TYPE find_kth(kpoint* dati,int k,int axis,int npoints){
+
+  //printf("\nk %d\n",k);
+  TYPE pivot=dati[0].coord[axis];
+
+  int split_point=three_way_partition(dati, pivot, npoints, axis);
+
+  kpoint* r=dati;
+  kpoint* l=dati+split_point;
+
+  int size_r=split_point-1;
+  int size_l=npoints-split_point;
+  if(k==size_l+1) return pivot;
+  if(k<=size_l) return find_kth(l, k, axis, size_l);
+  if(k>size_l+1) return find_kth(r, k-(size_l+1), axis, size_l);
+    
+}
+
+knode* buildtree(kpoint* dati,int ndim,int axis,int size,int dept){
+  printf("INIT SIZE %d\n",size);
+  int myaxis = (axis+1) % ndim;
+  knode* this_node= (knode*) malloc(sizeof(knode));
+  this_node->axis=myaxis;
+  kpoint* my_split=(kpoint*) malloc(sizeof(kpoint));
+  /* if (size == 0) { */
+  /*   return NULL; */
+  /* } */
+  if (size == 1) {
+    this_node->left = NULL;
+    this_node->right = NULL;
+    my_split->coord[0]=dati->coord[0];
+    my_split->coord[1]=dati->coord[1];
+    this_node->split=*my_split;
+
+    return this_node;
+  }
+  if (size ==2) {
+    //printf("size==2 lock , d %d\n",dept);
+    my_split->coord[0]=dati->coord[0];
+    my_split->coord[1]=dati->coord[1];
+    this_node->split=*my_split;
+    this_node->left = NULL;
+
+    this_node->right = buildtree(dati+1, 2, myaxis, 1,dept+1);
+    
+    return this_node;
+    
+  }
+  /* double mean=find_extreme(dati, size, myaxis); */
+  /* three_way_partition(dati, mean, size, myaxis); */
+ int median=size/2;//=((size %2) ==0)? size/2:size/2+1;
+
+  if(size>10){
+
+
+    TYPE median_value=find_kth(dati, median, myaxis, size);
+    median=three_way_partition(dati, median_value, size, myaxis);
+    //printf("\nmedian %d, median value%f,size %d\n",median,median_value,size);
+
+    view_point(dati, size);
+    printf("\n\n");
+    --median;
+  } else {
+    printf("quicksort call\n");
+    quickSort(dati, 0, size-1, myaxis);
+  }
+
+  printf("MEDIAN %d,SIZE %d\n",median,size);
+
+  if(size==0)
+    sleep(99999);
+  my_split->coord[0]=dati[median].coord[0];
+  my_split->coord[1]=dati[median].coord[1];
+
+  this_node->split=*my_split;
+
+  
+  //printf("I'm %d/%d",omp_get_thread_num(),omp_get_num_threads());
+  // 11 elementi, mediano 6, size/2 = 5
+  #pragma omp task shared(dati) firstprivate(myaxis, median,size,dept)
+  this_node->left = buildtree(dati, 2, myaxis, median ,dept+1);
+  #pragma omp task shared(dati) firstprivate(myaxis, median,size,dept)
+  this_node->right = buildtree(dati+median+1, 2, myaxis,size-median-1 ,dept+1);
+  return this_node;
+}
+
+
+
 int main(int argc, char* argv[]) {
-  srand(10);
+
   int p_number=atoi(argv[1]);
   kpoint* my_data=malloc(sizeof(kpoint)*p_number);
   init_point(my_data,p_number);
-  //quickSort(my_data, 0, p_number-1, 1);
-  //view_point(my_data,NPOINT);
+  //view_point(my_data,p_number);
+
+
+  
+  /* TYPE mean; */
+  /* mean=find_extreme(my_data, p_number, 0); */
+  /* view_point(my_data,p_number); */
+  /* int position; */
+  /* position=three_way_partition(my_data, 0.50, p_number, 0); */
+
+  /* int pivot=find_pivot(my_data, mean,p_number,0); */
+
+  /* printf("\nPIVOT %d,MEAN %f,value %f,position %d\n", pivot ,mean, my_data[pivot].coord[0],position); */
+  /* TYPE median; */
+  /* median=find_kth(my_data, 8, 0, p_number); */
+  /* printf("median %f\n",median); */
+  /* position=three_way_partition(my_data, median, p_number, 0); */
+  /* view_point(my_data,p_number); */
+
   knode* mynode;
-
-
   #pragma omp parallel
   {
-    omp_set_nested(1);
-    //printf("omp nested: %d\n",omp_get_nested());
     #pragma omp single
-      {
-	mynode = buildtree(my_data, 2, -1, p_number,1);
-      }
+    {
+      mynode=buildtree(my_data, 2, -1, p_number, 0);
+    }
   }
-  //view_node(mynode);
-  /* printf("graph test {\n"); */
-  /* view_tree(mynode); */
-  /* printf("}\n"); */
+  printf("\ngraph test {\n");
+  view_tree(mynode);
+  printf("}\n");
+
+
+
 }
 // 1.46 1.45 1.47 | .38 .38
