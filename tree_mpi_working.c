@@ -423,6 +423,7 @@ int main(int argc, char* argv[]) {
 
   int provided;
   MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
+  omp_set_num_threads(8);
   if(provided < MPI_THREAD_MULTIPLE)
     {
       printf("The threading support level is lesser than that demanded.\n");
