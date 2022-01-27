@@ -1,3 +1,7 @@
+////////////////// TREE 1.0 ///////////////////////
+// first version of tree, partial order, omp feature
+
+
 #include "/usr/lib/x86_64-linux-gnu/openmpi/include/mpi.h"
 #include <stdio.h>
 #include <omp.h>
@@ -8,6 +12,7 @@
 #define NPOINT 12
 typedef struct knode knode;
 typedef struct kpoint kpoint;
+
 #define TYPE double
 struct kpoint {
   TYPE coord[NDIM];
@@ -211,9 +216,7 @@ knode* buildtree(kpoint* dati,int ndim,int axis,int size,int dept){
   knode* this_node= (knode*) malloc(sizeof(knode));
   this_node->axis=myaxis;
   kpoint* my_split=(kpoint*) malloc(sizeof(kpoint));
-  /* if (size == 0) { */
-  /*   return NULL; */
-  /* } */
+
   if (size == 1) {
     this_node->left = NULL;
     this_node->right = NULL;
@@ -224,7 +227,7 @@ knode* buildtree(kpoint* dati,int ndim,int axis,int size,int dept){
     return this_node;
   }
   if (size ==2) {
-    //printf("size==2 lock , d %d\n",dept);
+
     my_split->coord[0]=dati->coord[0];
     my_split->coord[1]=dati->coord[1];
     this_node->split=*my_split;
@@ -235,8 +238,7 @@ knode* buildtree(kpoint* dati,int ndim,int axis,int size,int dept){
     return this_node;
     
   }
-  /* double mean=find_extreme(dati, size, myaxis); */
-  /* three_way_partition(dati, mean, size, myaxis); */
+
  int median=size/2;//=((size %2) ==0)? size/2:size/2+1;
 
   if(size>10){
@@ -244,7 +246,7 @@ knode* buildtree(kpoint* dati,int ndim,int axis,int size,int dept){
 
     TYPE median_value=find_kth(dati, median, myaxis, size);
     median=three_way_partition(dati, median_value, size, myaxis);
-    //printf("\nmedian %d, median value%f,size %d\n",median,median_value,size);
+
 
     view_point(dati, size);
     printf("\n\n");
@@ -264,8 +266,7 @@ knode* buildtree(kpoint* dati,int ndim,int axis,int size,int dept){
   this_node->split=*my_split;
 
   
-  //printf("I'm %d/%d",omp_get_thread_num(),omp_get_num_threads());
-  // 11 elementi, mediano 6, size/2 = 5
+
   #pragma omp task shared(dati) firstprivate(myaxis, median,size,dept)
   this_node->left = buildtree(dati, 2, myaxis, median ,dept+1);
   #pragma omp task shared(dati) firstprivate(myaxis, median,size,dept)
@@ -280,24 +281,6 @@ int main(int argc, char* argv[]) {
   int p_number=atoi(argv[1]);
   kpoint* my_data=malloc(sizeof(kpoint)*p_number);
   init_point(my_data,p_number);
-  //view_point(my_data,p_number);
-
-
-  
-  /* TYPE mean; */
-  /* mean=find_extreme(my_data, p_number, 0); */
-  /* view_point(my_data,p_number); */
-  /* int position; */
-  /* position=three_way_partition(my_data, 0.50, p_number, 0); */
-
-  /* int pivot=find_pivot(my_data, mean,p_number,0); */
-
-  /* printf("\nPIVOT %d,MEAN %f,value %f,position %d\n", pivot ,mean, my_data[pivot].coord[0],position); */
-  /* TYPE median; */
-  /* median=find_kth(my_data, 8, 0, p_number); */
-  /* printf("median %f\n",median); */
-  /* position=three_way_partition(my_data, median, p_number, 0); */
-  /* view_point(my_data,p_number); */
 
   knode* mynode;
   #pragma omp parallel
@@ -307,10 +290,11 @@ int main(int argc, char* argv[]) {
       mynode=buildtree(my_data, 2, -1, p_number, 0);
     }
   }
+  if(atoi(argv[2])==1) {
   printf("\ngraph test {\n");
   view_tree(mynode);
   printf("}\n");
-
+  }
 
 
 }

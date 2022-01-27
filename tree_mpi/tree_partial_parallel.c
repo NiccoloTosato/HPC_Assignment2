@@ -234,16 +234,16 @@ knode* buildtree(kpoint* dati,int ndim,int axis,int size,knode* base_address,kno
     this_node->split.coord[1]=dati->coord[1];
     knode* res=buildtree(++dati, 2, myaxis, --size,base_address,memory_offset);
     this_node->right = (res-base_address)+memory_offset; 
-    /* this_node->left = NULL; */
+    this_node->left = NULL;
     /* this_node->right = buildtree(++dati, 2, myaxis, --size,base_address,memory_offset); */
     /* knode* test=(this_node->right-base_address)+memory_offset; */
     /* this_node->right=test; */
-    /* int rank; */
-    /* MPI_Comm_rank(MPI_COMM_WORLD, &rank); */
-    /* printf("%p right [%d]\n",test,rank); */
-
-    return this_node;
-    
+#ifdef DEBUG
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    printf("%p right [%d]\n",this_node->right,rank);
+#endif
+        return this_node;
   }
   
   int median=((size %2) ==0) ? size/2 : size/2+1;
@@ -257,10 +257,10 @@ knode* buildtree(kpoint* dati,int ndim,int axis,int size,knode* base_address,kno
   --median;
   
 
-  if ( size == 0 ) {
-    sleep(99999);
-    printf("STOP \n");
-  }
+  /* if ( size == 0 ) { */
+  /*   sleep(99999); */
+  /*   printf("STOP \n"); */
+  /* } */
 
   this_node->split.coord[0]=dati[median].coord[0];
   this_node->split.coord[1]=dati[median].coord[1];
@@ -273,48 +273,43 @@ knode* buildtree(kpoint* dati,int ndim,int axis,int size,knode* base_address,kno
   
   #pragma omp task shared(dati) firstprivate(myaxis, median,size)
   {
-
-
     knode* res = (buildtree(l_slice, 2, myaxis, l_size,base_address,memory_offset));
     this_node->left=( res -base_address)+memory_offset;
     /* this_node->left = (buildtree(l_slice, 2, myaxis, l_size,base_address,memory_offset)); */
     /* knode* test=(this_node->left-base_address)+memory_offset; */
     /* this_node->left=test; */
-    /* int rank; */
-    /* MPI_Comm_rank(MPI_COMM_WORLD, &rank); */
-    /* printf("%p left [%d]\n",test,rank); */
+
+#ifdef DEBUG
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    printf("%p left [%d]\n",this_node->left,rank);
+#endif
   }
   #pragma omp task shared(dati) firstprivate(myaxis, median,size)
   {
-
-
     knode* res=  (buildtree(r_slice, 2, myaxis,r_size,base_address,memory_offset) );
     this_node->right = (res -base_address)+memory_offset; 
     /* this_node->right = (buildtree(r_slice, 2, myaxis,r_size,base_address,memory_offset) ); */
     /* knode* test=(this_node->right-base_address)+memory_offset; */
     /* this_node->right=test; */
-    /* int rank; */
-    /* MPI_Comm_rank(MPI_COMM_WORLD, &rank); */
-    /* printf("%p right [%d]\n",test,rank); */
-
-
-
+    
+#ifdef DEBUG
+    int rank;
+    MPI_Comm_rank(MPI_COMM_WORLD, &rank);
+    printf("%p right [%d]\n",this_node->right,rank);
+#endif
+    
   }
   return this_node;
 }
 
 knode* buildtree_master(kpoint* dati,int ndim,int axis,int size,int dept,int max_dept){
-
-
   
   int myaxis = (axis+1) % ndim;
   knode* this_node=malloc(sizeof(knode));
 /* #pragma omp atomic capture */
 /*   this_node=global_node_address++; */
   this_node->axis=myaxis;
-
-  
-
   if (size == 1) { //only one node, null leaf and stop here
     this_node->left = NULL;
     this_node->right = NULL;
@@ -365,18 +360,24 @@ knode* buildtree_master(kpoint* dati,int ndim,int axis,int size,int dept,int max
       MPI_Send(&r_size, 1, MPI_INT, rslave, 0, MPI_COMM_WORLD);
       MPI_Send(r_slice, r_size*sizeof(kpoint), MPI_BYTE, rslave, 0, MPI_COMM_WORLD);
       knode* rnode=malloc(r_size*sizeof(knode));
+#ifdef DEBUG
       sleep(1);
       for(int i=0;i<r_size;++i)
 	printf("OMP %p [%d]r\n",&rnode[i],i);
-
       sleep(1);
-      MPI_Send(&rnode, 1, MPI_LONG_INT, rslave, 0, MPI_COMM_WORLD);
       printf("0) -> I'm %d/%d, I will send to %d and myselft\nroffset %p\n",myid,nthread,rslave,rnode);
       fflush(stdout);
+#endif
+      MPI_Send(&rnode, 1, MPI_LONG_INT, rslave, 0, MPI_COMM_WORLD);
+      MPI_Send(&myaxis, 1, MPI_INT, rslave, 0, MPI_COMM_WORLD);
+      global_node_address=malloc(l_size*sizeof(knode));
+      this_node->left= (buildtree(l_slice, 2, myaxis, l_size,NULL,NULL));
       MPI_Status stat;
       MPI_Recv(rnode, r_size*sizeof(knode), MPI_BYTE, rslave, 0, MPI_COMM_WORLD, &stat);
       this_node->right=rnode;
-      this_node->left=NULL;
+
+
+      
     } else {
       int rslave,lslave;
 #pragma omp atomic capture
@@ -392,25 +393,25 @@ knode* buildtree_master(kpoint* dati,int ndim,int axis,int size,int dept,int max
 
       knode* lnode=malloc(l_size*sizeof(knode));
       knode* rnode=malloc(r_size*sizeof(knode));
+#ifdef DEBUG
       for(int i=0;i<r_size;++i)
 	printf("OMP %p [%d]r\n",&rnode[i],i);
       for(int i=0;i<l_size;++i)
 	printf("OMP %p [%d]l\n",&lnode[i],i);
-
+#endif
       MPI_Send(&lnode, 1, MPI_LONG_INT, lslave, 0, MPI_COMM_WORLD);
       MPI_Send(&rnode, 1, MPI_LONG_INT, rslave, 0, MPI_COMM_WORLD);
-      
-      
-      
-
+      MPI_Send(&myaxis, 1, MPI_INT, rslave, 0, MPI_COMM_WORLD);
+      MPI_Send(&myaxis, 1, MPI_INT, lslave, 0, MPI_COMM_WORLD);
       MPI_Status stat;
       MPI_Recv(rnode, r_size*sizeof(knode), MPI_BYTE, rslave, 0, MPI_COMM_WORLD, &stat);
       MPI_Recv(lnode, l_size*sizeof(knode), MPI_BYTE, lslave, 0, MPI_COMM_WORLD, &stat);
       this_node->right=rnode;
       this_node->left=lnode;
+#ifdef DEBUG
       printf("0) I'm %d/%d, I will send to %d and %d\n roffset %p\n loffset %p\n",myid,nthread,rslave,lslave,rnode,lnode);
       fflush(stdout);
-      
+#endif
 
     }
 
@@ -476,19 +477,24 @@ int main(int argc, char* argv[]) {
     MPI_Recv(data, data_size*sizeof(kpoint), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD, &stat);
     knode* memory_offset=NULL;
     MPI_Recv(&memory_offset, 1, MPI_LONG_INT, MASTER, 0, MPI_COMM_WORLD, &stat);
-    printf("1) I'm %d and my size is %d\n myoffset %p\n",rank,data_size,memory_offset);
-    fflush(stdout);
+    int axis;
+    MPI_Recv(&axis, 1, MPI_INT, MASTER, 0, MPI_COMM_WORLD, &stat);
+/* #ifdef DEBUG */
+/*     printf("1) I'm %d and my size is %d\n myoffset %p\n",rank,data_size,memory_offset); */
+/*     fflush(stdout); */
+/* #endif */
     global_node_address=malloc(data_size*sizeof(knode));
     knode* mynode=NULL;
 #pragma omp parallel
     {
       #pragma omp single
       {
-	mynode=buildtree(data, NDIM, -1, data_size,global_node_address,memory_offset);
+	mynode=buildtree(data, NDIM, axis, data_size,global_node_address,memory_offset);
       }
 
     }
     MPI_Send(mynode, data_size*sizeof(knode), MPI_BYTE, MASTER, 0, MPI_COMM_WORLD);
+
     //(void)mynode;
     /* sleep(rank*1); */
     /* if(atoi(argv[2])==1){ */

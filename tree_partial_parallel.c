@@ -23,14 +23,6 @@ struct knode {
 };
 
 
-void view_point(kpoint* dati,int n){
-  for(int i=0;i<n;i++){
-    printf("(%f,%f), ",dati[i].coord[0],dati[i].coord[1]);
-  }
-  printf("\n");
-}
-
-
 
 void init_point(kpoint* dati,int n){
   //#pragma omp parallel for
@@ -244,8 +236,8 @@ knode* buildtree(kpoint* dati,int ndim,int axis,int size){
   }
   /* double mean=find_extreme(dati, size, myaxis); */
   /* three_way_partition(dati, mean, size, myaxis); */
- int median=size/2;//=((size %2) ==0)? size/2:size/2+1;
-
+  int median=size/2;//((size %2) ==0) ? size/2 : size/2+1;
+ printf("%d median\n",median);
   if(size>12){
 
 
@@ -309,7 +301,5 @@ int main(int argc, char* argv[]) {
   view_tree(mynode);
   printf("}\n");
     }
-
-
 }
-// 1.46 1.45 1.47 | .38 .38
+
