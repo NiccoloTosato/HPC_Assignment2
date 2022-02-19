@@ -1,0 +1,121 @@
+
+thread 1
+real 47.130000
+user 46.126667
+sys 0.993333
+
+thread 2
+real 29.189333
+user 53.380667
+sys 1.210667
+
+thread 3
+real 22.634000
+user 58.063333
+sys 1.525333
+
+thread 4
+real 20.250000
+user 65.960000
+sys 1.791333
+
+thread 5
+real 18.094667
+user 70.426667
+sys 2.146667
+
+thread 6
+real 17.077333
+user 76.620000
+sys 2.472667
+
+thread 7
+real 15.848667
+user 80.028000
+sys 2.856000
+
+thread 8
+real 15.229333
+user 84.884667
+sys 3.195333
+
+thread 9
+real 14.427333
+user 87.892667
+sys 3.584000
+
+thread 10
+real 14.004000
+user 91.848667
+sys 3.945333
+
+thread 11
+real 13.648000
+user 96.551333
+sys 4.432000
+
+thread 12
+real 13.470667
+user 101.736000
+sys 4.899333
+
+thread 13
+real 13.202000
+user 106.110000
+sys 5.502000
+
+thread 14
+real 13.149333
+user 112.384000
+sys 6.016000
+
+thread 15
+real 12.946667
+user 116.899333
+sys 6.616667
+
+thread 16
+real 12.879333
+user 122.422667
+sys 7.192000
+
+thread 17
+real 12.766667
+user 127.294667
+sys 8.089333
+
+thread 18
+real 12.718667
+user 132.794667
+sys 8.876667
+
+thread 19
+real 12.666000
+user 138.338667
+sys 9.956667
+
+thread 20
+real 12.729333
+user 144.864000
+sys 11.104667
+
+thread 21
+real 12.628667
+user 149.488000
+sys 12.478667
+
+thread 22
+real 12.670000
+user 155.931333
+sys 13.641333
+
+thread 23
+real 12.787333
+user 162.980667
+sys 15.342667
+
+thread 24
+real 12.780667
+user 169.530000
+sys 17.056667
+
