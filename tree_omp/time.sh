@@ -1,8 +1,8 @@
 #!/bin/bash
  
 #PBS -q dssc 
-#PBS -l nodes=1:ppn=1
-#PBS -l walltime=0:10:00 
+#PBS -l nodes=1:ppn=24
+#PBS -l walltime=10:10:00 
  
 module load openmpi/4.0.3/gnu/9.3.0 
 
@@ -31,15 +31,9 @@ avg_time() {
 export OMP_PLACE=core
 export OMP_PROC_BIND=close
 
-for i in {1..24}
-do
-    echo "thread ${i}" >> time.txt
-    avg_time 15 ./tree_omp.x $((10000000*i)) 0 ${i} >> time.txt
-    echo >> time.txt
-done
 
 echo > weak_omp_10e7out.txt
-for i in {1..24}
+for i in 1 2 4 6 8 10 12 14 16 18 20 22 24
 do
     echo "thread ${i}" >> weak_omp_10e7out.txt
     avg_time 15 ./tree_omp.x $((10000000*i)) 0 ${i} >> weak_omp_10e7out.txt
@@ -47,13 +41,19 @@ do
 done
 
 echo > weak_omp_10e8out.txt
-for i in {1..24}
+for i in 1 2 4 6 8 10 12 14 16 18 20 22 24
 do
     echo "thread ${i}" >> weak_omp_10e8out.txt
     avg_time 8 ./tree_omp.x $((100000000*i)) 0 ${i} >> weak_omp_10e8out.txt
     echo >> weak_omp_10e8out.txt
 done
 
-
+#echo > weak_omp_10e9out.txt
+#for i in {20..24}
+#do
+#    echo "thread ${i}" >> weak_omp_10e9out.txt
+#    avg_time 5 ./tree_omp.x $((10000000*i))00 0 ${i} >> weak_omp_10e9out.txt
+#    echo >> weak_omp_10e9out.txt
+#done
 
 

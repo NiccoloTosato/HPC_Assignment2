@@ -67,24 +67,6 @@ int partition(kpoint *array, int low, int high, short int axis) {
     return (i + 1);
 }
 
-void quickSort(kpoint *array, int low, int high, unsigned short int axis) {
-
-    if (low < high) {
-
-        // find the pivot element such that
-        // elements smaller than pivot are on left of pivot
-        // elements greater than pivot are on right of pivot
-        int pi = partition(array, low, high, axis);
-        // printf("Hi, i'm %d/%d in sorting\n",omp_get_thread_num(),omp_get_num_threads());
-        //  recursive call on the left of pivot
-
-        quickSort(array, low, pi - 1, axis);
-
-        // recursive call on the right of pivot
-
-        quickSort(array, pi + 1, high, axis);
-    }
-}
 
 void view_tree(knode *dati) {
     if ((dati->right == NULL) && (dati->left == NULL)) {
@@ -196,15 +178,9 @@ knode *buildtree(kpoint *dati, int ndim, short int axis, unsigned int size) {
 
     unsigned int median = ((size % 2) == 0) ? size / 2 : size / 2 + 1;
 
-    if (size > 31) {
+    TYPE median_value = find_kth(dati, median, myaxis, size);
+   
 
-        TYPE median_value = find_kth(dati, median, myaxis, size);
-        median = three_way_partition(dati, median_value, size, myaxis);
-
-    } else {
-
-        quickSort(dati, 0, size - 1, myaxis);
-    }
     --median;
 
     this_node->split.coord[0] = dati[median].coord[0];
@@ -233,7 +209,6 @@ int main(int argc, char *argv[]) {
 
     kpoint *my_data = malloc(sizeof(kpoint) * p_number);
     init_point(my_data, p_number);
-    return 0;
     global_node_address = malloc(p_number * sizeof(knode));
 
     knode *mynode;
